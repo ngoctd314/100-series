@@ -10,9 +10,4 @@ var a = func() error {
 }()
 
 func main() {
-
-}
-
-func fn() (bool, error) {
-	return true, nil
 }

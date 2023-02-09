@@ -57,3 +57,31 @@ func init() {
     db = d
 }
 ```
+
+**Let's describe three main downsides**
+
+- Error management in an init function is limited, only ways to signal an error is to panic, leading application to be stopped
+- init function will be executed before running the test cases
+- Database connection pool is assigned to a global variable. Global variables have some severe drawbacks
++ Any functions can alter them within the package
++ It can also make unit test more complicated as a function that would depend on it 
+
+**In summary, we have seen that init functions may lead to some issues:**
+
+- Limit error management
+- It can complicate how to implement tests
+- If the initialization requires to set a state, it has to be done through global variables
+
+**3. Interface pollution**
+
+Interface pollution is about overwhelming our code with unnecessary abstractions making it harder to understand.
+The bigger the interface, the weaker the abstraction
+
+**When to use interfaces?**
+
+- Common behavior
+- Decoupling
+- Restricting behavior
+
+**Common behavior**
+The first option we will discuss is to use interface when multiple types implement a common behavior. In such a case, we can factor out the behavior inside an interface.
