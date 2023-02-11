@@ -1,0 +1,20 @@
+[
+	{
+		"dt": "2023-02-04",
+		"dspid": "1008",
+		"dealid": "thetradedesk-000-000-467",
+		"viewable": 208033,
+		"viewablemoney": 445.19061974,
+		"render": 385261,
+		"rendermoney": 824.458538458
+	},
+	{
+		"dt": "2023-02-04",
+		"dspid": "2032",
+		"dealid": "thetradedesk-000-000-467",
+		"viewable": 8630,
+		"viewablemoney": 18.468200109,
+		"render": 8702,
+		"rendermoney": 18.622280033
+	}
+]

@@ -4,7 +4,7 @@ Anyone who has never made a mistake has never tries anything new.
 
 -- Albert Einstein
 
-**1. Unintended variable shadowing**
+## 1. Unintended variable shadowing
 
 The scope of a variable refers to the places a variable can be referenced. In Go, a variable name declared in a block may be re declared in an inner block. This called variable shadowing, is prone to common mistakes.
 
@@ -35,7 +35,7 @@ func fn() (bool, error) {
 
 Variable shadowing occurs when a variable name is re declared in an inner block, and we've seen that this practice is prone to mistakes
 
-**2. Misusing init functions**
+## 2. Misusing init functions
 
 When a package is initialized, all the constants and variables declarations in the package are evaluated. Then, the init functions are executed.
 
@@ -85,3 +85,175 @@ The bigger the interface, the weaker the abstraction
 
 **Common behavior**
 The first option we will discuss is to use interface when multiple types implement a common behavior. In such a case, we can factor out the behavior inside an interface.
+
+```go
+// Example, Interface in sort package
+type Interface interface {
+	Len() int
+	Less(i, j int) bool
+	Swap(i, j int)
+}
+```
+Finding the right abstraction to factor out behavior can also bring many benefits.
+
+**Decoupling**
+
+If we rely on abstraction instead of a concrete implementation, the implementation itself can be replaceable with another without even having to change our code; this is the Liskov Substituition Principle.
+One benefit of decoupling can be related to unit testing, for example.
+
+```go
+type CustomerService struct {
+	store mysql.Store
+}
+
+func (cs CustomerService) CreateNewCustomer(id string) error {
+	return cs.store.StoreCustomer(id)
+}
+```
+
+Now, what if we want to test this method? As customerService relies on the actual implementation to store a Customer, we are obliged to test it through integration tests which require spinning up a MySQL instance. To give us more flexibility, we should decouple CustomerService from the actual implementation, which can be done via an interface:
+
+```go
+type customerStorer interface {
+	StoreCustomer(string) error
+}
+
+type CustomerService struct {
+	storer customerStorer
+}
+
+func (cs CustomerService) CreateNewCustomer(id string) error {
+	return cs.store.StoreCustomer(id)
+}
+```
+
+**Restricting behavior**
+
+The last use case we will discuss can be pretty counter-intuitive at first sight. It's about restricting a type to a specific behavior.
+
+```go
+type IntConfig struct {
+}
+
+func (c *IntConfig) Get() int {}
+func (c *IntConfig) Set(value int) {}
+```
+
+Now, suppose we receive an IntConfig that holds some specific configuration, such as a threshold. Yet, in our code, we are only interested in retrieving the config value, and we want to prevent updating it. How could we enforce that, semantically, this configuration is a read-only one if we don't want to change our configuration package?
+
+```go
+type intConfigGetter interface {
+	Get() int
+}
+```
+
+Then, in our code, we could rely on intConfigGetter instead of concrete implementation:
+
+```go
+type Foo struct {
+	threshold intConfigGetter
+}
+func NewFoo(threshold intConfigGetter) Foo {
+	return Foo{threshold: threshold}
+}
+
+func (f Foo) Bar() {
+	threshold := f.threshold.Get()
+}
+```
+
+**Interface pollution**
+
+Create interfaces before concrete types shouldn't work in Go. As we discussed, interfaces are made to create abstractions. And the main caveat when programming meets abstractions is remembering that abstractions should be discovered, not created.
+
+We shouldn't start by creating abstractions in our code if there is no immediate reason for it. We shouldn't design with interfaces but wait for a concrete need. We should create an interface when we need it, not when we foresee that we could need it.
+
+What's the main problem if we overuse interfaces? The answer is that it makes the code flow more complex. Adding a useless level of indirection doesn't bring any value; it creates a useless abstraction making the code more difficult to read, understand and reason about.
+
+If we don't have a strong reason for adding an interface and it's unclear how an interface makes a code better, we should challenge this interface's purpose. **Why not call the implementation directly?**
+
+We can also not a performance overhead when calling a method through an interface. It requires a lookup in a hashtable data structure to find the concrete type it's pointing to. Yet, this isn't an issue an in many contexts as this overhead is minimal.
+
+**Don't design with interfaces, discover them.**
+
+## 3. Where should an interface live?
+
+Some term should be clear
+
+- Producer side: an interface defined in the same package as the concrete implementation
+- Consumer side: an interface defined in an external package, where it's used
+
+It's pretty common to see developers creating interfaces on the producer side, alongside the concrete implementation. This design is perhaps a habit from developers having a C# or a Java background. However, in Go, this is, in most cases, not what we should do.
+
+We create a specific package to store and retrieve customer data. Meanwhile, we decide, still in the same package, that all the calls will have to go through the following interface:
+
+```go
+type CustomerStorage interface {
+	Store(customer Customer) error
+	Get(id string) Customer
+	Update(customer Customer) error
+	GetAll() ([]Customer, error)
+	GetCustomersWithoutContract() ([]Customer, error)
+	GetCustomersWithNegativeBalance() ([]Customer, error)
+}
+```
+
+We might think we have some excellent reasons to create and expose this interface on the producer side. Perhaps it's a good way to decouple the client code from the actual implementation? 
+
+Maybe another client wants to decouple his code but only interested in the GetAllCustomers method.
+
+```go
+package client
+
+type customerGetter interface {
+	GetAllCustomers() ([]store.Customer, error)
+}
+```
+## 4. Returning interface
+
+While designing a function signature, we may have to either return and interface or a concrete implementation. Let's understand why returning an interface is, in many cases, considered a bad practice in Go.
+
+```go
+package client
+
+type Store interface {}
+```
+
+```go
+package store
+
+// InMemoryStore
+type InMemoryStore struct {
+}
+
+func NewInMemoryStore() client.Store {
+}
+```
+**Problems:** cyclic dependency 
+
+In most cases, we can get inspiration from Postel's law:
+
+Be conservative in what you do, be liberal in what you accept from others
+
+If we apply this idiom to Go, it means:
+
+- Returning struct instead of interfaces
+- Accepting interfaces if possible
+
+We shouldn't return interfaces but concrete implementations. Otherwise, it can make our design more complex due to package dependencies and restrict flexibility as all the clients would have to rely on the same abstraction. If we know than an abstraction will be helpful for clients, we can consider returning an interface. Otherwise, we shouldn't force abstractions, they should be discovered by clients. If a client needs to abstract an implementation for whatever reason, it can still do it on his side. 
+
+
+## 5. Not being aware of the possible problems with type embedding
+
+Let's see an example of a wrong usage. We will implement a struct that will hold some in-memory data, and we want to protect it against concurrent accesses using a mutex:
+
+```go
+type InMem struct {
+	sync.Mutex
+	m map[string]int
+}
+
+func New() *InMem {
+	return &InMem{m: make(map[string]int)}
+}
+```
