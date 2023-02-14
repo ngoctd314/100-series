@@ -256,4 +256,45 @@ type InMem struct {
 func New() *InMem {
 	return &InMem{m: make(map[string]int)}
 }
+
+func (i *InMem) Get(key string) (int, bool) {
+	// As the mutex is embedded, we can directly access the Lock and Unlock methods from
+	// the i receiver
+	i.Lock()
+	v, contains := i.m[key]
+	i.Unlock()
+
+	return v, contains
+}
+
+func main() {
+	m := inmem.New()
+	// sync.Mutex is an embedded type, the Lock and Unlock methods will be promoted
+	m.Lock() // ??
+}
+
 ```
+
+Let's see another example, but this time, embedding can be considered a correct approach. We want to write a customer logger that would contain an io.WriteCloser and expose two methods: Write and Close. If io.WriterClose isn't embedded, we would have to write it like so:
+
+```go
+type Logger struct {
+	writerCloser io.WriteCloser
+}
+
+func (l Logger) Write(p []byte) (int, error) {
+	return l.writerCloser.Write(p)
+}
+
+func (l Logger) Closer() error {
+	return l.writerCloser.Closer()
+}
+```
+
+```go
+type Logger struct {
+	io.WriteCloser
+}
+```
+
+// 71
