@@ -311,5 +311,67 @@ If we decide to use type embedding, we have to keep two main constraints in mind
 
 One may also argue that using type embedding could lead to extra efforts in terms of maintenance in the context of exported structs. Indeed, embedding a type inside an exported struct means remaining cautions when this type evolves. For example, if we add a new method in the inner type, we should ensure it doesn't break the latter constraint. Hence, to avoid this extra effort, teams can also prevent type embedding in public structs.
 
+## 7. Not understand slice length and capacity
 
-101
+In Go, slice is backed by an array. It means the slice's data are stored contiguously in an array data struct. A slice also handles the logic of adding an element if the backing array is full or how to shrink the backing array if almost empty.
+
+Internally, a slice holds a pointer towards the backing array plus a length and a capacity. The length is the number of elements the slice contains, whereas the capacity is the number of elements in the backing array.
+
+Nil slice doesn't require any allocation, we should favor returning a nil slice.
+
+```go
+func f() []string {
+	var s []string
+	if foo() {
+		s = append(s, "foo")
+	}
+	return s
+}
+```
+
+Initialize a slice depending on the context:
+
+```go
+// if we aren't sure about the final length and the slice can be empty
+var s []string
+
+// create a nil and empty slice
+[]string(nil)
+
+// if the future length is known
+make([]string, length[, capacity])
+
+// should be avoid
+[]string{}
+```
+
+Nil slices are always empty. Therefore, checking by checking the length of the slice, we cover all the scenarios:
+
+- If the slice is nil: len(operations) != 0 will be false
+- If the slice isn't nil but empty: len(operations) != 0 will also be false
+
+## 8. Slice and memory leaks
+
+This section will show that slicing an existing slice or array can lead to memory leaks in some conditions. 
+
+**Capacity leak**
+
+```go
+func consumeMessages() {
+	for {
+		msg := receiveMessage()
+		// Do something with msg
+		storeMessageType(getMessageType(msg))
+	}
+}
+
+func getMessageType(msg []byte) []byte {
+	return msg[:5]
+} 
+```
+
+The getMessageType function computes the message type by slicing the input slice. We test this implementation, and everything is fine. However, when we deploy our application, we notice that our application consumes about 1 GB of memory. How is it possible?
+
+The slicing operation on msg using msg[:5] create a 5-length slice. However, its capacity remains the same capacity as the initial slice. The remaining elements are still allocated in memory, even if eventually msg will be referenced anymore
+
+151
