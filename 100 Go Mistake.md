@@ -72,7 +72,7 @@ func init() {
 - It can complicate how to implement tests
 - If the initialization requires to set a state, it has to be done through global variables
 
-**3. Interface pollution**
+## 3. Interface pollution
 
 Interface pollution is about overwhelming our code with unnecessary abstractions making it harder to understand.
 The bigger the interface, the weaker the abstraction
@@ -176,7 +176,7 @@ We can also not a performance overhead when calling a method through an interfac
 
 **Don't design with interfaces, discover them.**
 
-## 3. Where should an interface live?
+## 4. Where should an interface live?
 
 Some term should be clear
 
@@ -209,7 +209,7 @@ type customerGetter interface {
 	GetAllCustomers() ([]store.Customer, error)
 }
 ```
-## 4. Returning interface
+## 5. Returning interface
 
 While designing a function signature, we may have to either return and interface or a concrete implementation. Let's understand why returning an interface is, in many cases, considered a bad practice in Go.
 
@@ -243,7 +243,7 @@ If we apply this idiom to Go, it means:
 We shouldn't return interfaces but concrete implementations. Otherwise, it can make our design more complex due to package dependencies and restrict flexibility as all the clients would have to rely on the same abstraction. If we know than an abstraction will be helpful for clients, we can consider returning an interface. Otherwise, we shouldn't force abstractions, they should be discovered by clients. If a client needs to abstract an implementation for whatever reason, it can still do it on his side. 
 
 
-## 5. Not being aware of the possible problems with type embedding
+## 6. Not being aware of the possible problems with type embedding
 
 Let's see an example of a wrong usage. We will implement a struct that will hold some in-memory data, and we want to protect it against concurrent accesses using a mutex:
 
@@ -297,4 +297,19 @@ type Logger struct {
 }
 ```
 
-// 71
+Different embedding from OOP subclassing can sometimes be confusing. The main difference is related to who is the receiver of a method. Embedding is about composition, not inheritance.
+
+What should we conclude about type embedding?
+
+First, let's note that it's rarely a necessity, and it means that whatever the usecase, we can probably solve it as well without type embedding. It's mainly used for convenience, in most cases to promote behaviors.
+
+If we decide to use type embedding, we have to keep two main constraints in mind:
+
+- It shouldn't be solely because of some syntactic sugar to simplify accessing a field ( e.g Foo.Baz() instead of Foo.Bar.Bar() ). If it's the only rationale, let's not embed the inner type and use a field instead.
+
+- It shouldn't promote data (fields) or a behavior (methods) we want to hide from outside. For example, if it allows clients to access a locking behavior that should have remained private to the struct.
+
+One may also argue that using type embedding could lead to extra efforts in terms of maintenance in the context of exported structs. Indeed, embedding a type inside an exported struct means remaining cautions when this type evolves. For example, if we add a new method in the inner type, we should ensure it doesn't break the latter constraint. Hence, to avoid this extra effort, teams can also prevent type embedding in public structs.
+
+
+101
