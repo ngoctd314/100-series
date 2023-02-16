@@ -357,21 +357,67 @@ This section will show that slicing an existing slice or array can lead to memor
 **Capacity leak**
 
 ```go
+package main
+
+import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+)
+
+func main() {
+	// pprof: go tool pprof -http localhost:9000 http://localhost:8080/debug/pprof/heap
+	go consumeMessages()
+
+	http.ListenAndServe(":8080", nil)
+}
+
 func consumeMessages() {
 	for {
 		msg := receiveMessage()
 		// Do something with msg
-		storeMessageType(getMessageType(msg))
+		storeHeader(getHeader(msg))
+		log.Println("len header", len(_headers))
 	}
 }
+func receiveMessage() []byte {
+	return make([]byte, 0, 2<<20)
+}
 
-func getMessageType(msg []byte) []byte {
+func getHeader(msg []byte) []byte {
 	return msg[:5]
-} 
+}
+
+var (
+	_headers [][]byte
+)
+
+func storeHeader(header []byte) {
+	_headers = append(_headers, header)
+}
+
 ```
 
 The getMessageType function computes the message type by slicing the input slice. We test this implementation, and everything is fine. However, when we deploy our application, we notice that our application consumes about 1 GB of memory. How is it possible?
 
 The slicing operation on msg using msg[:5] create a 5-length slice. However, its capacity remains the same capacity as the initial slice. The remaining elements are still allocated in memory, even if eventually msg will be referenced anymore
 
-151
+![leak capacity](assets/leak-capacity.png)
+
+As we can notice in this figure, the backing array of the slice still contains one million bytes after the slicing operation. Hence, if we keep in memory 1000 messages, instead of storing about 5KB, we will hold about 1 GB.
+
+So we can use copy to solve it
+
+```go
+func getHeader(msg []byte) []byte {
+	// header is a 5-length, 5-capacity slice regardless of the size of the message received. Hence, we will store only 5 bytes per message type.
+	header := make([]byte, 5)
+	copy(header, msg)
+
+	return header
+}
+```
+
+We have to remember that slicing a large slice or array can lead to potential high memory consumption. Indeed, the remaining space won't be reclaimed by the GC, and we can keep a large backing array, despite using only a few elements. Using slice copy is the solution to prevent such a case.
+
+153
