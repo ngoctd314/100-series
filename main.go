@@ -1,44 +1,31 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"fmt"
 	_ "net/http/pprof"
+	"runtime"
 )
 
 func main() {
-	// pprof: go tool pprof -http localhost:9000 http://localhost:8080/debug/pprof/heap
-	go consumeMessages()
 
-	http.ListenAndServe(":8080", nil)
 }
 
-func consumeMessages() {
-	for {
-		msg := receiveMessage()
-		// Do something with msg
-		storeHeader(getHeader(msg))
-		log.Println("len header", len(_headers))
+func printAlloc() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("%d KB\n", m.Alloc/1024)
+}
+
+func mapWithoutInitialize() {
+	m := make(map[int]int)
+	for i := 0; i < 1e6; i++ {
+		m[i] = i
 	}
 }
-func receiveMessage() []byte {
-	return make([]byte, 2<<20)
-}
 
-func getHeader(msg []byte) []byte {
-	// header := make([]byte, 5)
-	// n := copy(header, msg)
-	// log.Printf("copy %d bytes\n", n)
-
-	header := msg[:5:5]
-
-	return header
-}
-
-var (
-	_headers [][]byte
-)
-
-func storeHeader(header []byte) {
-	_headers = append(_headers, header)
+func mapWithInitialize() {
+	m := make(map[int]int, 1e6)
+	for i := 0; i < 1e6; i++ {
+		m[i] = i
+	}
 }

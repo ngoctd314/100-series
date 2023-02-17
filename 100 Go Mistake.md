@@ -420,4 +420,124 @@ func getHeader(msg []byte) []byte {
 
 We have to remember that slicing a large slice or array can lead to potential high memory consumption. Indeed, the remaining space won't be reclaimed by the GC, and we can keep a large backing array, despite using only a few elements. Using slice copy is the solution to prevent such a case.
 
-153
+**Slice and pointers**
+
+We have seen that slicing can cause a leak because of the slice capacity. Those are still part of the backing array but outside the length range.
+
+```go
+type Foo struct {
+	v []byte
+}
+
+func main() {
+	// Allocate a slice of 1000 Foo elements
+	foos := make([]Foo, 1_000)
+	printAlloc()
+
+	// iterate over each Foo element, and allocate for each one 1MB for the v slice
+	for i := 0; i < len(foos); i++ {
+		foos[i] = Foo{
+			v: make([]byte, 1024*1024),
+		}
+	}
+	printAlloc()
+
+	two := keepFirstTwoElementsOnly(foos)
+	runtime.GC()
+	printAlloc()
+	// runtime.KeepAlive to keep a reference to the two variable after the GC so that it won't be collected
+	runtime.KeepAlive(two)
+}
+
+func keepFirstTwoElementsOnly(foos []Foo) []Foo {
+	return foos[:2]
+}
+
+func printAlloc() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("%d KB\n", m.Alloc/1024)
+}
+
+```
+```txt
+result
+==========
+333 KB
+1024260 KB
+1024264 KB
+```
+
+What's the reason?
+
+The rule is the following, and it's essential to keep in mind while working with slices: if the element is a pointer or a struct with pointer fields, the elements won't be reclaimed by the GC.
+
+So what are the options to ensure we don't leak the remaining Foo elements?
+
+The first option, again, is to create a copy of the slice:
+
+```go
+func keepFirstTwoElementsOnly(foos []Foo) []Foo {
+	res := make([]Foo, 2)
+	copy(res, foos)
+	return res
+}
+```
+
+As we copy the first two elements of the slice, the GC will know that the 998 elements won't be referenced anymore and can be collected by the GC.
+
+There's a second option if we want to keep the underlying capacity of 1000 elements, for example, which is mark the slices of the remaining elements to nil explicitly:
+
+```go
+func keepFirstTwoElementsOnly(foos []Foo) []Foo {
+	for i := 2; i < len(foos); i++ {
+		foos[i].v = nil
+	}
+	return foos[:2]
+}
+```
+
+Here, we return a 2-length, 1000-capacity slice, but we set the slices of the remaining elements to nil. Hence, the GC will be able to collect the 998 backing arrays.
+
+So, which option is the best? Depend on the proportion of the elements.
+
+In this section, we have seen two potential memory leak problems. The first one is about slicing an existing slice or array to preserve the capacity. If we handle large slices and reslice them to keep only a fraction of it, a lot of memory will remain allocated but unused. The second one is when we use theslicing operation with elements being a pointer or a struct with pointer fields, we should know that the GC won’t reclaim these elements. In that case, the two options are to either perform a copy or mark the remaining elements or their fields to nil explicitly
+
+## 9. Map and memory leak
+
+```go
+func mapWithoutInitialize() {
+	m := make(map[int]int)
+	for i := 0; i < 1e6; i++ {
+		m[i] = i
+	}
+}
+
+func mapWithInitialize() {
+	m := make(map[int]int, 1e6)
+	for i := 0; i < 1e6; i++ {
+		m[i] = i
+	}
+}
+
+```
+
+```go
+func BenchmarkMapWithout(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		mapWithoutInitialize()
+	}
+}
+
+func BenchmarkMapWith(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		mapWithInitialize()
+	}
+}
+```
+
+Therefore, just like with slices, if we know upfront the number of elements a map will contain, we should create it by providing an initial size. Doing this avoids potential map growth, which is quite heavy computation-wise as it requires reallocating enough space and rebalancing all the elements.
+
+## 10. Ignoring that elements are copied in range loops
+
+178
