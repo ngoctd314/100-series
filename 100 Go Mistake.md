@@ -626,3 +626,23 @@ for _, v := range &a {
 In summary, the range loop evaluates the provided expression only once, before the beginning of the loop, by doing a copy (regardless of the type).
 
 // 190
+
+## Not understanding the concept of rune
+
+In Go, a string is an immutable data structure representing
+
+- A pointer to an immutable byte slice
+- The total number of bytes in this array
+
+## Now knowing which type of receiver to use
+
+A receiver must be a pointer:
+
+- If the method needs to mutate the receiver. This rule is also valid if the receiver is a slice and a method needs to append elements:
+
+```go
+type slice []int
+func (s *slice) add(element int) {
+	*s = append(*s, element)
+}
+```
