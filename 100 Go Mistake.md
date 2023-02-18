@@ -540,4 +540,89 @@ Therefore, just like with slices, if we know upfront the number of elements a ma
 
 ## 10. Ignoring that elements are copied in range loops
 
-178
+In Go, everything we assign is a copy. For example, if we assign the result of a function returning:
+- A struct, it will perform a copy of this struct
+- A pointer, it will perform a copy of the memory address
+
+```go
+type account struct {
+	balance int
+}
+
+func copyValue() {
+	accounts := []account{
+		{balance: 0},
+		{balance: 1},
+	}
+
+	for _, acc := range accounts {
+		acc.balance += 1000
+	}
+}
+```
+
+```go
+func noCopyValue() {
+	accounts := []account{
+		{balance: 0},
+		{balance: 1},
+	}
+
+	for i := 0; i < len(accounts) ; i++ {
+		accounts[i].balance += 1000
+	}
+}
+```
+
+```go
+func noCopyValue() {
+	accounts := []*account{
+		{balance: 0},
+		{balance: 1},
+	}
+
+	for _, acc := range accounts {
+		acc.balance += 1000
+	}
+}
+```
+
+In general, we should remember that the value element in a range loop is a copy. Therefore, if the value is a struct we need to mutate, we will only update the copy, not the element itself, unless the value or the field we modify is a pointer. The favored options are to access the element via the index using a rang loop or a classic for loop.
+
+## 11. Ignoring how arguments are evaluated in range loops
+
+What is result of this code?
+```go
+s := []int{0,1,2}
+for range s {
+	a = append(a, 10)
+}
+```
+
+To understand this question, we should know that when using a rang loop, the provided expression is evaluated only once, before the beginning of the loop. In this context, evaluated means that the provided expression is copied to a temporary variable, and then range will iterate over this variable, not the original one. 
+
+So, what is result of this code?
+```go
+a := [3]int{0,1,2}
+for i, v := range a {
+	a[2] = 10
+	log.Println(v)
+}
+// 0,1,2
+```
+
+As we mentioned, the range operator creates a copy of the array. Meanwhile, the loop doesn't update the copy; it updates the original array: a. Therefore, the value of v during the last iteration is 2, not 10.
+
+```go
+// Solution: using an array pointer
+a := [3]int{0,1,2}
+for _, v := range &a {
+	a[2] = 10
+	log.Println(v)
+}
+// 0,1,10
+```
+
+In summary, the range loop evaluates the provided expression only once, before the beginning of the loop, by doing a copy (regardless of the type).
+
+// 190
