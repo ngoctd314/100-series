@@ -636,7 +636,7 @@ In Go, a string is an immutable data structure representing
 
 ## Now knowing which type of receiver to use
 
-A receiver must be a pointer:
+**A receiver must be a pointer**
 
 - If the method needs to mutate the receiver. This rule is also valid if the receiver is a slice and a method needs to append elements:
 
@@ -646,3 +646,21 @@ func (s *slice) add(element int) {
 	*s = append(*s, element)
 }
 ```
+- If the method receiver contains a field that cannot be copied for example, a type part of the sync package
+
+**A receiver should be a pointer**
+
+- If the receiver is a large object. Indeed, using a pointer could make the call more efficient as it prevents making an extensive copy.
+
+**A receiver must be a value**
+- If we have to enforce a receiver's immutability
+- If the receiver is a map, a function, or a channel; otherwise it leads to compilation error.
+
+**A receiver should be a value**
+- If the receiver is a slice that doesn't have to be mutated
+- If the receiver is a small array or struct
+- If the receiver is a basic type such as int, float64 or string
+
+By default, we can choose to go with a value receiver unless there's a good reason not to do so. In doubt, we should use a pointer receiver.
+
+## Unintended side effects with named result parameters

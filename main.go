@@ -2,22 +2,23 @@ package main
 
 import (
 	"fmt"
-	"log"
 	_ "net/http/pprof"
-	"runtime"
 )
 
-func main() {
-	a := [3]int{0, 1, 2}
-	for _, v := range &a {
-		a[2] = 10
-		log.Println(v)
-	}
-	fmt.Println(a)
+type customer struct {
+	data *data
+}
+type data struct {
+	balance float64
 }
 
-func printAlloc() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	fmt.Printf("%d KB\n", m.Alloc/1024)
+func (c customer) add(operation float64) {
+	c.data.balance += operation
+}
+func main() {
+	c := customer{data: &data{
+		balance: 100,
+	}}
+	c.add(50.)
+	fmt.Printf("balance: %.2f\n", c.data.balance)
 }
