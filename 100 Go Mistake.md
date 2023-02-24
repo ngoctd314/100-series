@@ -663,4 +663,38 @@ func (s *slice) add(element int) {
 
 By default, we can choose to go with a value receiver unless there's a good reason not to do so. In doubt, we should use a pointer receiver.
 
-## Unintended side effects with named result parameters
+## Returning a nil receiver
+
+Let's consider the following example.
+
+```go
+func main() {
+	err := convError()
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+type Foo struct{}
+
+func (f *Foo) Error() string {
+	return "error"
+}
+
+func convError() error {
+	var foo *Foo // foo is nil pointer
+	// do something
+	return foo // foo is converted to error with Error(): foo.Error() 
+}
+
+func convErrorGood() error {
+	var foo *foo
+	// do something
+	if foo == nil {
+		return nil
+	}
+	return foo
+}
+```
+
+We've seen in this section that in Go, having a nil receiver is allowed, and an interface converted from a nil pointer isn't a nil interface. For that reason, when we have to return an interface, we shouldn't return a nil pointer but a nil value directly.

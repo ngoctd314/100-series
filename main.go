@@ -5,20 +5,23 @@ import (
 	_ "net/http/pprof"
 )
 
-type customer struct {
-	data *data
-}
-type data struct {
-	balance float64
+func main() {
+	err := convError()
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
-func (c customer) add(operation float64) {
-	c.data.balance += operation
+type Foo struct{}
+
+func (f *Foo) Error() string {
+	return "error"
 }
-func main() {
-	c := customer{data: &data{
-		balance: 100,
-	}}
-	c.add(50.)
-	fmt.Printf("balance: %.2f\n", c.data.balance)
+
+func convError() error {
+	var foo *Foo // foo is nil pointer
+	if foo == nil {
+		return nil
+	}
+	return foo
 }
