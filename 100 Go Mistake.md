@@ -627,14 +627,14 @@ In summary, the range loop evaluates the provided expression only once, before t
 
 // 190
 
-## Not understanding the concept of rune
+##  Not understanding the concept of rune
 
 In Go, a string is an immutable data structure representing
 
 - A pointer to an immutable byte slice
 - The total number of bytes in this array
 
-## Now knowing which type of receiver to use
+## 12. Now knowing which type of receiver to use
 
 **A receiver must be a pointer**
 
@@ -663,7 +663,7 @@ func (s *slice) add(element int) {
 
 By default, we can choose to go with a value receiver unless there's a good reason not to do so. In doubt, we should use a pointer receiver.
 
-## Returning a nil receiver
+## 13. Returning a nil receiver
 
 Let's consider the following example.
 
@@ -697,4 +697,90 @@ func convErrorGood() error {
 }
 ```
 
-We've seen in this section that in Go, having a nil receiver is allowed, and an interface converted from a nil pointer isn't a nil interface. For that reason, when we have to return an interface, we shouldn't return a nil pointer but a nil value directly.
+We've seen in this section that in Go, having a nil receiver is allowed, and an interface converted from a nil pointer isn't a nil interface. For that reason, when we have to return an interface, we shouldn't return a nil pointer but a nil value directly. Generally, having a nil pointer isn't a desirable state and means a probable bug.
+
+We saw an example with errors throughout this section as it's the most common case leading to this error. Yet, please note that this problem isn't tied to errors. It can happen with any interface implemented using pointer receivers.
+
+
+## 14. Ignoring how defer arguments and receivers and evaluated
+
+Explain ?
+```go
+func main() {
+	var s = "ngoctd"
+	fmt.Printf("%p\n", &s)
+
+	fn(s)
+
+	defer func() {
+		fmt.Printf("%p\n", &s)
+		fn(s)
+	}()
+
+	defer fn(s)
+}
+
+func fn(s string) {
+	fmt.Printf("%p\n", &s)
+}
+
+// 0xc000010250
+// 0xc000010260
+// 0xc000010270
+// 0xc000010250
+// 0xc000010280
+```
+
+```go
+func main() {
+	var s = Struct{id: "ngoctd"}
+	fmt.Printf("%p\n", &s)
+
+	s.print()
+
+	defer func() {
+		fmt.Printf("x %p\n", &s)
+		s.print()
+	}()
+
+	defer s.print()
+}
+
+type Struct struct {
+	id string
+}
+
+func (s Struct) print() {
+	fmt.Printf("%p\n", &s)
+}
+
+// 0xc00009e210
+// 0xc00009e220
+// 0xc00009e230
+// 0xc00009e210
+// 0xc00009e240
+```
+
+In summary, we must remind that when calling defer on a function or method, the call's arguments are evaluated immediately. If we want to mutate the arguments provided to defer afterward, we can use pointers or closures. For a method, the receiver is also evaluated immediately; hence, the behavior depends on whether the receiver is a value or a pointer.
+
+- Deciding on using either value or pointer receiver should be
+made according to various factors such as the type, if it has
+to be mutated, if it contains a field that can’t be copied, and
+how large the object is. In doubt, we should use a pointer
+receiver.
+- Using named result parameters can be an efficient way to
+improve the readability of a function/method, especially if
+multiple result parameters have the same type. In some
+cases, it can also be convenient as they will be initialized to
+their zero value. Yet, we have to be cautious about potential
+side effects.
+- When returning an interface, we have to be cautious about
+not returning a nil pointer but an explicit nil value.
+Otherwise, it may lead to unintended consequences as the
+caller will receive a non-nil value.
+- Designing functions to receive io.Reader types instead of
+filenames improves the reusability of a function and makes
+testing easier.
+- Passing a pointer to a defer function or wrapping a call
+inside a closure are two possible solutions to overcome
+arguments and receivers being evaluated immediately.

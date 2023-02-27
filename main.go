@@ -1,27 +1,19 @@
 package main
 
-import (
-	"fmt"
-	_ "net/http/pprof"
-)
+import "fmt"
 
 func main() {
-	err := convError()
-	if err != nil {
-		fmt.Println(err)
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("recover", r)
+		}
+	}()
+
+	f()
 }
 
-type Foo struct{}
-
-func (f *Foo) Error() string {
-	return "error"
-}
-
-func convError() error {
-	var foo *Foo // foo is nil pointer
-	if foo == nil {
-		return nil
-	}
-	return foo
+func f() {
+	fmt.Println("a")
+	panic("foo")
+	fmt.Println("b")
 }
