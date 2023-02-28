@@ -785,4 +785,11 @@ testing easier.
 inside a closure are two possible solutions to overcome
 arguments and receivers being evaluated immediately.
 
-## 
+## 15. Concurrency is not parallelism
+
+Concurrency enables parallelism. Indeed, concurrency provides a structure to solve a problem with parts that may be parallelized.
+
+Concurrency is about dealing with lots of things at once. Parallelism is about doing lots of things at once.
+-- Rob Pike
+
+## 16. Concurrency isn't always faster
