@@ -784,3 +784,5 @@ testing easier.
 - Passing a pointer to a defer function or wrapping a call
 inside a closure are two possible solutions to overcome
 arguments and receivers being evaluated immediately.
+
+## 

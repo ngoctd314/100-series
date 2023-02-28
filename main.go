@@ -15,5 +15,4 @@ func main() {
 func f() {
 	fmt.Println("a")
 	panic("foo")
-	fmt.Println("b")
 }
