@@ -626,6 +626,21 @@ for _, v := range &a {
 In summary, the range loop evaluates the provided expression only once, before the beginning of the loop, by doing a copy (regardless of the type).
 
 // 190
+## Not understanding addressable values in Go
+
+One of the tricky concepts in Go is addressable values. There are a number of important things that are not addressable. For example, values in a map and the return values from function and method calls are not addressable. The following are all errors:
+
+```go
+&m["key"]
+&afunc()
+&t.method()
+```
+The return value of a function only becomes addressable when put into a variable:
+
+```go
+v := afunc()
+&v
+```
 
 ##  Not understanding the concept of rune
 

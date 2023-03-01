@@ -2,14 +2,15 @@ package main
 
 import "fmt"
 
-func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("recover", r)
-		}
-	}()
+type person struct {
+	name string
+	age  int
+}
 
-	f()
+func main() {
+	m := make(map[int]*person)
+	m[0] = &person{}
+	fmt.Println(m[0])
 }
 
 func f() {
