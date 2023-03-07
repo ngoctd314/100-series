@@ -625,7 +625,7 @@ for _, v := range &a {
 
 In summary, the range loop evaluates the provided expression only once, before the beginning of the loop, by doing a copy (regardless of the type).
 
-## Ignoring the impacts of using pointer elements in range loops
+## 12. Ignoring the impacts of using pointer elements in range loops
 ```go
 package main
 
@@ -655,6 +655,10 @@ func main() {
 }
 
 ```
+
+When iterating over a data structure using a range loop, we must recall that all the values are assigned to a unique variable with a single unique address. Therefore, if we store a pointer referencing this variable during each iteration, we will end up in a situation where we store the same pointer referencing the same element: the latest one. We can overcome this 	issue by forcing the creation of a local variable in the loop's scope or creating a pointer referencing a slice element via its index.
+
+## 13. Map insert during iteration
 
 ## Not understanding addressable values in Go
 

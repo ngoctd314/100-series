@@ -18,16 +18,15 @@ func (s store) put(v []int) {
 }
 
 func main() {
-	s := store{
-		m: make(map[int]*int),
-	}
-	v := []int{1, 2, 3}
-	for k := range v {
-		fmt.Printf("v[%d] = %p\n", k, &v[k])
+	m := map[int]bool{
+		0: true,
+		1: false,
+		2: true,
 	}
 
-	s.put(v)
-	for _, v := range s.m {
-		fmt.Println(*v)
+	for k := range m {
+		m[10+k] = true
 	}
+
+	fmt.Println(m)
 }
