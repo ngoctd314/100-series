@@ -625,7 +625,37 @@ for _, v := range &a {
 
 In summary, the range loop evaluates the provided expression only once, before the beginning of the loop, by doing a copy (regardless of the type).
 
-// 190
+## Ignoring the impacts of using pointer elements in range loops
+```go
+package main
+
+import "fmt"
+
+type store struct {
+	m map[int]*int
+}
+
+func (s store) put(v []int) {
+	for k, _v := range v {
+		s.m[k] = &_v
+	}
+}
+
+func main() {
+	s := store{
+		m: make(map[int]*int),
+	}
+	v := []int{1, 2, 3}
+
+	s.put(v)
+	for _, v := range s.m {
+		fmt.Println(*v)
+	}
+	// 3 3 3
+}
+
+```
+
 ## Not understanding addressable values in Go
 
 One of the tricky concepts in Go is addressable values. There are a number of important things that are not addressable. For example, values in a map and the return values from function and method calls are not addressable. The following are all errors:

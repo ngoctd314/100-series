@@ -1,19 +1,33 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
-type person struct {
-	name string
-	age  int
+type store struct {
+	m map[int]*int
+}
+
+func (s store) put(v []int) {
+	fmt.Println(strings.Repeat("~", 10))
+	for k := range v {
+		fmt.Printf("v[%d] = %p\n", k, &v[k])
+		s.m[k] = &v[k]
+	}
 }
 
 func main() {
-	m := make(map[int]*person)
-	m[0] = &person{}
-	fmt.Println(m[0])
-}
+	s := store{
+		m: make(map[int]*int),
+	}
+	v := []int{1, 2, 3}
+	for k := range v {
+		fmt.Printf("v[%d] = %p\n", k, &v[k])
+	}
 
-func f() {
-	fmt.Println("a")
-	panic("foo")
+	s.put(v)
+	for _, v := range s.m {
+		fmt.Println(*v)
+	}
 }
