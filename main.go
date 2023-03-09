@@ -23,10 +23,19 @@ func main() {
 		1: false,
 		2: true,
 	}
+	n := copyMap(m)
 
-	for k := range m {
+	for k := range n {
 		m[10+k] = true
+		// fmt.Printf("%p\n", m)
 	}
-
 	fmt.Println(m)
+}
+
+func copyMap(m map[int]bool) map[int]bool {
+	n := make(map[int]bool)
+	for k, v := range m {
+		n[k] = v
+	}
+	return n
 }

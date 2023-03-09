@@ -660,6 +660,56 @@ When iterating over a data structure using a range loop, we must recall that all
 
 ## 13. Map insert during iteration
 
+In Go, updating a map (inserting or deleting an element) during an iteration is allowed; it doesn't lead to a compilation or a runtime error. However, there's another aspect that we should consider while adding an entry in a map during an iteration. Otherwise, it can lead to non-deterministic results.
+
+```go
+func main() {
+	m := map[int]bool{
+		0: true,
+		1: false,
+		2: true,
+	}
+
+	for k := range m {
+		m[10+k] = true
+		fmt.Println(m)
+	}
+}
+```
+The result of this code is unpredictable. If a map entry is created during iteration, it maybe produced during the iteration or skipped. The choice may vary for each entry created and from one iteration to the next. Hence, when an element is added to a map during an iteration, it may be produced during a follow-up iteration, or it may not. As Go developers, we don't have any way to enforce the behavior. 
+
+It's essential to have this behavior in mind to ensure our code doesn't produce unpredictable outputs. If we want to update a map while iterating over it and make sure the added entries aren't part of the iteration, one solution it to work on a copy of the map like so:
+
+```go
+func main() {
+	m := map[int]bool{
+		0: true,
+		1: false,
+		2: true,
+	}
+	n := copyMap(m)
+
+	for k := range n {
+		m[10+k] = true
+		// fmt.Printf("%p\n", m)
+	}
+	fmt.Println(m)
+}
+
+func copyMap(m map[int]bool) map[int]bool {
+	n := make(map[int]bool)
+	for k, v := range m {
+		n[k] = v
+	}
+	return n
+}
+```
+To summarize, when we work with a map, we shouldn't rely on:
+- The ordering of the data by keys
+- The preservation of the inserting order
+- A deterministic iteration order
+- The fact that an element added during an iteration will be produced during this iteration.
+
 ## Not understanding addressable values in Go
 
 One of the tricky concepts in Go is addressable values. There are a number of important things that are not addressable. For example, values in a map and the return values from function and method calls are not addressable. The following are all errors:
