@@ -956,4 +956,12 @@ Internally, the Go scheduler uses the following terminology:
 
 Each OS thread (M) is assigned to CPU core (P) by the OS scheduler. Then each Goroutine (G) runs on an OS thread (M).
 
+A goroutine has a simpler than an OS thread. It can be either:
+- Executing: the goroutine is scheduled on an M and executing its instruction
+- Runnable: waiting for being in an executing state
+- Waiting: stopped and pending for something to complete, such as a system call or a synchronization operation (mutex)
+
+When a goroutine is created but cannot be executed yet. For example, all the other Ms are already executing a G. In this scenario, what will the Go runtime do about it? The answer is queuing. Indeed, the Go runtime handles two kinds of queues: one local queue per P and a global queue shared among all the Ps. 
+311
+
 ## 16. Concurrency isn't always faster
