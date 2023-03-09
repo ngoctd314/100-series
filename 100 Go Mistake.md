@@ -708,7 +708,53 @@ To summarize, when we work with a map, we shouldn't rely on:
 - The ordering of the data by keys
 - The preservation of the inserting order
 - A deterministic iteration order
-- The fact that an element added during an iteration will be produced during this iteration.
+- The fact that an element added during an iteration will be produced during this iteration
+
+## Using defer inside a loop
+
+The defer function statement delays a call's execution until the surrounding function returns. One common mistake is to be unaware of the sequences of using defer inside a loop.
+
+We will implement a function that opens a set of files where the paths will be received via a channel. Hence, we will have to iterate over this channel, open the files and handle the closure.
+```go
+func readFiles(ch <- chan string) error {
+	for path := range ch {
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		// in this case, the defer calls will be executed not during each loop iteration but when the readFiles function returns. IF readFiles doesn't return,
+		// the file descriptors will be kept open forever, causing leaks.
+		defer file.Close()
+	}
+	return nil
+}
+```
+
+How to fix it? We can encapsulate readFile logic to another function, then we can use defer to close file without causing leaks. 
+```go
+func readFiles(ch <- chan string) error {
+	for path := range ch {
+		if err := readFile(path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func readFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	// defer function is call when readFile return
+	defer file.Close()
+
+	return nil
+}
+```
+
+When using defer, we must remember that it schedules a function call when the surrounding function returns. Hence, calling defer function within a loop will stack all the calls: they won't be executed during each iteration, which may cause memory leaks if the loop doesn't terminate. 
 
 ## Not understanding addressable values in Go
 
@@ -890,5 +936,24 @@ Concurrency enables parallelism. Indeed, concurrency provides a structure to sol
 
 Concurrency is about dealing with lots of things at once. Parallelism is about doing lots of things at once.
 -- Rob Pike
+
+Concurrency and parallelism are different. Concurrency is about structure, and we can change a sequential implementation into a concurrent one by introducing different steps that separate concurrent threads can tackle. Meanwhile, parallelism is about execution, and we can leverage it at the level of a step by adding more parallel threads.
+
+A thread is the smallest unit of processing that an OS can perform. If a process wants to process multiple actions simultaneously, it will spin up multiple threads. These threads can be:
+- Concurrent when two or more threads can start, run, and complete in overlapping time periods.
+- Parallel when the same task can be executed multiple times at once.
+  
+The OS is responsible for scheduling the thread's process most optimally so that:
+- All the threads can consume CPU cycles without being starved for too much time
+- The workload is distributed as evenly as possible among the different CPU cores.
+
+A CPU core executes different threads. When it switches from one thread to another, it executes an operation called context switching. The active thread consuming CPU cycles was in an executing state and moved to runnable state, meaning ready to executed but pending an available core. Context switching is considered an expensive operations as the OS needs to save the current execution state of a thread before the switch.
+
+Internally, the Go scheduler uses the following terminology:
+- G: Goroutine
+- M: OS thread (Machine) 
+- P: CPU core (Processor)
+
+Each OS thread (M) is assigned to CPU core (P) by the OS scheduler. Then each Goroutine (G) runs on an OS thread (M).
 
 ## 16. Concurrency isn't always faster

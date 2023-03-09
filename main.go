@@ -1,41 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"strings"
+	"os"
 )
 
-type store struct {
-	m map[int]*int
-}
-
-func (s store) put(v []int) {
-	fmt.Println(strings.Repeat("~", 10))
-	for k := range v {
-		fmt.Printf("v[%d] = %p\n", k, &v[k])
-		s.m[k] = &v[k]
-	}
-}
-
 func main() {
-	m := map[int]bool{
-		0: true,
-		1: false,
-		2: true,
-	}
-	n := copyMap(m)
-
-	for k := range n {
-		m[10+k] = true
-		// fmt.Printf("%p\n", m)
-	}
-	fmt.Println(m)
 }
 
-func copyMap(m map[int]bool) map[int]bool {
-	n := make(map[int]bool)
-	for k, v := range m {
-		n[k] = v
+func readFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
 	}
-	return n
+
+	defer file.Close()
+
+	return nil
 }
