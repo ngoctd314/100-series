@@ -1,28 +1,25 @@
 package main
 
 import (
-	"os"
+	"log"
+	"runtime"
 )
 
+var done bool
+var a string
+
+func setup() {
+	a = "hello, world"
+	done = true
+	if done {
+		log.Println(len(a)) // always 12 once printed
+	}
+}
+
 func main() {
-}
-
-func readFiles(ch <-chan string) error {
-	for path := range ch {
-		if err := readFile(path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readFile(path string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	defer file.Close()
-
-	return nil
+	go setup()
+	// for !done {
+	runtime.Gosched()
+	// }
+	log.Println(a)
 }
