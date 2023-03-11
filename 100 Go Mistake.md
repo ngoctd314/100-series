@@ -710,7 +710,7 @@ To summarize, when we work with a map, we shouldn't rely on:
 - A deterministic iteration order
 - The fact that an element added during an iteration will be produced during this iteration
 
-## Using defer inside a loop
+## 14. Using defer inside a loop
 
 The defer function statement delays a call's execution until the surrounding function returns. One common mistake is to be unaware of the sequences of using defer inside a loop.
 
@@ -755,6 +755,55 @@ func readFile(path string) error {
 ```
 
 When using defer, we must remember that it schedules a function call when the surrounding function returns. Hence, calling defer function within a loop will stack all the calls: they won't be executed during each iteration, which may cause memory leaks if the loop doesn't terminate. 
+
+## 15. Not understanding the concept of rune
+
+- A charset is set of characters, whereas an encoding describes how to translate a charset into binary.
+- In Go, a string references an immutable slice of arbitrary bytes
+- A Go source code is encoded using UTF-8. Hence, all string literals are UTF-8 strings. Yet, a string can contain arbitrary bytes, if it's obtained from another place (not the source code), it isn't guaranteed to be based on the UTF-8 encoding.
+- A rune corresponds to a Unicode code point concept, meaning an item represented by a single value.
+- Using UTF-8, a Unicode code point can be encoded from one to for bytes.
+- Using len on a string in Go returns the number of bytes, not the number of runes.
+
+## 16. Inaccurate string iteration
+
+```go
+s := "hêllo"
+fmt.Println(len(s))
+for i := range s {
+	fmt.Printf("position %d: %c\n", i, s[i])
+}
+fmt.Printf("len=%d\n", len(s))
+// position 0: h
+// position 1: Ã
+// position 3: l
+// position 4: l
+// position 5: o
+// len=6
+```
+
+We assigned to s a string literal, s is a UTF-8 string. Meanwhile, the special character ê isn't encoded in a single byte; it requires two bytes. Therefore, calling len(s) returns 6.
+
+What if we want get the number of runes in a string, not the number of bytes? It depends on the encoding. In the previous example, as we assigned a string literal to s, it's a UTF-8 string. Hence, we can use the unicode/utf8 package:
+
+```go
+fmt.Println(utf8.RuneCountInString(s)) // 
+```
+
+Let's get back to the iteration to understand the remaining surprises:
+
+```go
+for i := range s {
+	fmt.Printf("position %d: %c\n", i, s[i])
+}
+// position 0: h
+// position 1: Ã
+// position 3: l
+// position 4: l
+// position 5: o
+```
+
+We have to understand that in this example, we don't iterate over each rune; instead over each starting index of rune.
 
 ## Not understanding addressable values in Go
 

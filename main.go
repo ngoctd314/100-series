@@ -1,28 +1,16 @@
 package main
 
-import (
-	"os"
-)
+import "fmt"
 
 func main() {
+	v := []int{1, 2, 3}
+	for i := 0; i < len(v); i++ {
+		v = append(v, i)
+	}
+	fmt.Println(v)
 }
 
-func readFiles(ch <-chan string) error {
-	for path := range ch {
-		if err := readFile(path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func readFile(path string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	defer file.Close()
-
-	return nil
+func fn() int {
+	fmt.Println("RUN")
+	return 5
 }
