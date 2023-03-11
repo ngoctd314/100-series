@@ -1,16 +1,25 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"runtime"
+)
 
-func main() {
-	v := []int{1, 2, 3}
-	for i := 0; i < len(v); i++ {
-		v = append(v, i)
+var done bool
+var a string
+
+func setup() {
+	a = "hello, world"
+	done = true
+	if done {
+		log.Println(len(a)) // always 12 once printed
 	}
-	fmt.Println(v)
 }
 
-func fn() int {
-	fmt.Println("RUN")
-	return 5
+func main() {
+	go setup()
+	// for !done {
+	runtime.Gosched()
+	// }
+	log.Println(a)
 }
