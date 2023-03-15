@@ -805,6 +805,24 @@ for i := range s {
 
 We have to understand that in this example, we don't iterate over each rune; instead over each starting index of rune.
 
+## 17. Under-optimized strings concatenation
+
+When it comes to concatenating strings, in Go, there are two main ways to do it, and one can be really inefficient in some conditions. 
+
+```go
+func concat(values []string) string {
+	s := ""
+	for _, value := range values {
+		s += value
+	}
+	return s
+}
+```
+
+During each iteration, the += operator concatenates s with the value string. At first sight, this function may not look wrong. Yet, with this implementation, we forget one of the core characteristics of a string: its immutability. Therefore, each iteration doesn't update s; it reallocates a new string in memory, which significantly impacts the performance of this function.
+
+Internally strings.Builder holds a byte slice. Each call to WriteString results in a call to append on this slice. There are two impacts. First this struct shouldn't be used concurrently as the calls to append would lead to race conditions. The second impact is something that we already saw in Inefficient slice initialization
+
 ## Not understanding addressable values in Go
 
 One of the tricky concepts in Go is addressable values. There are a number of important things that are not addressable. For example, values in a map and the return values from function and method calls are not addressable. The following are all errors:
