@@ -821,7 +821,27 @@ func concat(values []string) string {
 
 During each iteration, the += operator concatenates s with the value string. At first sight, this function may not look wrong. Yet, with this implementation, we forget one of the core characteristics of a string: its immutability. Therefore, each iteration doesn't update s; it reallocates a new string in memory, which significantly impacts the performance of this function.
 
-Internally strings.Builder holds a byte slice. Each call to WriteString results in a call to append on this slice. There are two impacts. First this struct shouldn't be used concurrently as the calls to append would lead to race conditions. The second impact is something that we already saw in Inefficient slice initialization
+Internally strings.Builder holds a byte slice. Each call to WriteString results in a call to append on this slice. There are two impacts. First this struct shouldn't be used concurrently as the calls to append would lead to race conditions. The second impact is something that we already saw in Inefficient slice initialization: if the future length of a slice is already known, we should preallocate it. For that purpose, strings.Builder exposes a method: Grow(n int) to guarantee space for another n bytes.
+
+```go
+func concat(values []string) string {
+	total := 0
+	for i := 0; i < len(values); i++ {
+		total += len(values[i])
+	}
+	sb := strings.Builder{}
+	sb.Grow(total)
+	for _, value := range values {
+		_, _ = sb.WriteString(value)
+	}
+	return sb.String()
+}
+```
+
+## 18. Useless string conversion
+
+## 19. Substring and memory leaks
+
 
 ## Not understanding addressable values in Go
 
@@ -997,6 +1017,25 @@ testing easier.
 inside a closure are two possible solutions to overcome
 arguments and receivers being evaluated immediately.
 
+## 10 Ignoring when to wrap an error
+
+Different between fmt.Errorf("%w") and fmt.Errorf("%v")
+
+```go
+// wraps the source error to add additional context without having to create another error type
+if err != nil {
+	return fmt.Errorf("bar failed: %w", err)
+}
+
+// Here, the error it self isn't wrapped. We transform it into another error to add context but the source code error itself isn't available
+if err != nil {
+	return fmt.Errorf("bar failed: %v", err)
+}
+```
+
+Wrapping an error makes the source error available for callers.
+277
+
 ## 15. Concurrency is not parallelism
 
 Concurrency enables parallelism. Indeed, concurrency provides a structure to solve a problem with parts that may be parallelized.
@@ -1032,3 +1071,4 @@ When a goroutine is created but cannot be executed yet. For example, all the oth
 311
 
 ## 16. Concurrency isn't always faster
+ 
