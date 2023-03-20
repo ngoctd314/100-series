@@ -1202,3 +1202,78 @@ func f(ctx context.Context) error {
 	}
 }
 ```
+
+## 30. Propagating and inappropriate context
+
+Sometimes, context propagation can lead to subtle bugs, preventing subfunctions from being correctly executed.
+
+```go
+func handler(w http.ResponseWriter, r *http.Request) {
+	response, err := doSomeTask(r.Context(), r)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	go func() {
+		err := publish(r.Context(), response)
+	}()
+	writeResponse(response)
+}
+```
+
+We have to know that the context attached to an HTTP request can cancel in different conditions:
+- When the client's connection closes
+- In the case of an HTTP/2 request, when the request is canceled
+- Or when the response has been written back to the client
+
+When the response has been written to the client, the context associated with the request will be canceled. Therefore, we are facing a race condition:
+- If writing the response is done after the Kafka publication, we both return a response and publish message successfully.
+- However, if writing the response is done before or during the Kafka publication, the message may not be published.
+
+So how can we fix this issue? One idea could be not to propagate the parent context. Instead, we would call publish with an empty context:
+
+```go
+err := publish(context.Background(), response)
+```
+But, sometime context contained some useful values. For example, if the context contained a correlation ID used for distributed tracing, we can correlate the HTTP request and the Kafka publication. Ideally, we would like to have a new context, detached from the potential parent cancellation, but that still conveys the values.
+
+```go
+type detachContext struct {
+	ctx context.Context
+}
+
+// Deadline implements context.Context
+func (detachContext) Deadline() (deadline time.Time, ok bool) {
+	return time.Time{}, false
+}
+
+// Done implements context.Context
+func (detachContext) Done() <-chan struct{} {
+	return nil
+}
+
+// Err implements context.Context
+func (detachContext) Err() error {
+	return nil
+}
+
+// Value implements context.Context
+func (d detachContext) Value(key any) any {
+	return d.ctx.Value(key)
+}
+```
+In summary, propagating a context should be done cautionsly. We illustrated this section with an example of handling an asynchronous action based on a context associated with an HTTP request. As the context is canceled once we return the response, the asynchronous action can also get stopped unexpectedly. Let's bear in mind the impacts of propagating a given context and if necessary, let's also keep in mind that it would always be possible to create our custom context for specific action.
+
+## 31. Starting a goroutine without knowing when to stop it
+
+In term of memory, a goroutine starts with a minimum 2KB stack size, which can grow and shrink as needed (with a max stack size of 1GB on 64-bit, 250MB on 32-bit). Memory-wise, a goroutine can also hold variable references allocated to the heap. Meanwhile, a goroutine can hold resources such as HTTP or DB connections, open files, network sockets that should be closed gracefully eventually. If a goroutine is leaked, these kinds of resources will also be leaked.
+
+```go
+ch := foo()
+go func() {
+	for v := range ch {
+
+	}
+}()
+```
+The created goroutine will exit when ch is closed. Yet, do we know exactly when this channel will be closed? 
