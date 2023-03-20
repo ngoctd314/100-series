@@ -843,7 +843,7 @@ func concat(values []string) string {
 ## 19. Substring and memory leaks
 
 
-## Not understanding addressable values in Go
+## 20. Not understanding addressable values in Go
 
 One of the tricky concepts in Go is addressable values. There are a number of important things that are not addressable. For example, values in a map and the return values from function and method calls are not addressable. The following are all errors:
 
@@ -859,14 +859,7 @@ v := afunc()
 &v
 ```
 
-##  Not understanding the concept of rune
-
-In Go, a string is an immutable data structure representing
-
-- A pointer to an immutable byte slice
-- The total number of bytes in this array
-
-## 12. Now knowing which type of receiver to use
+## 21. Now knowing which type of receiver to use
 
 **A receiver must be a pointer**
 
@@ -895,7 +888,7 @@ func (s *slice) add(element int) {
 
 By default, we can choose to go with a value receiver unless there's a good reason not to do so. In doubt, we should use a pointer receiver.
 
-## 13. Returning a nil receiver
+## 22. Returning a nil receiver
 
 Let's consider the following example.
 
@@ -934,7 +927,7 @@ We've seen in this section that in Go, having a nil receiver is allowed, and an 
 We saw an example with errors throughout this section as it's the most common case leading to this error. Yet, please note that this problem isn't tied to errors. It can happen with any interface implemented using pointer receivers.
 
 
-## 14. Ignoring how defer arguments and receivers and evaluated
+## 23. Ignoring how defer arguments and receivers and evaluated
 
 Explain ?
 ```go
@@ -1017,7 +1010,7 @@ testing easier.
 inside a closure are two possible solutions to overcome
 arguments and receivers being evaluated immediately.
 
-## 10 Ignoring when to wrap an error
+## 24. Ignoring when to wrap an error
 
 Different between fmt.Errorf("%w") and fmt.Errorf("%v")
 
@@ -1033,10 +1026,9 @@ if err != nil {
 }
 ```
 
-Wrapping an error makes the source error available for callers.
-277
+Wrapping an error makes the source error available for callers. Hence, it means introducing potential coupling. If we want to make sure our client don't rely on something that we consider as implementation details, then the error returned shouldn't be wrapped but transformed.
 
-## 15. Concurrency is not parallelism
+## 25. Concurrency is not parallelism
 
 Concurrency enables parallelism. Indeed, concurrency provides a structure to solve a problem with parts that may be parallelized.
 
@@ -1068,7 +1060,145 @@ A goroutine has a simpler than an OS thread. It can be either:
 - Waiting: stopped and pending for something to complete, such as a system call or a synchronization operation (mutex)
 
 When a goroutine is created but cannot be executed yet. For example, all the other Ms are already executing a G. In this scenario, what will the Go runtime do about it? The answer is queuing. Indeed, the Go runtime handles two kinds of queues: one local queue per P and a global queue shared among all the Ps. 
-311
 
-## 16. Concurrency isn't always faster
- 
+```go
+func runtime.Schedule() {
+	// Only 1/61 of the time, check the global runnable queue for a G.
+	// If not found, check the local queue
+	// If not found,
+	// 		Try to steal from other Ps.
+	// 		If not, check the global runnable queue.
+	// 		If not found, poll network
+}
+```
+Every 1/61 execution, the Go scheduler will check whether goroutines from the global queue are available. If not, it will check its local queue. Meanwhile, if both the global and the local queues are empty, it can pick up goroutines from other local queues. This principle in scheduling is called work-stealing, and it allows an underutilized processor to actively look for other processor's goroutine and steal one. Go scheduler is now preemptive. It means that when a goroutine is running for a specific amount of time (10ms), it will be marked preemptible and can be context-switched off to be replaced by another goroutine. It allows a long-running job to be forced to share CPU time.
+
+## 26. Not understanding race problems 
+
+Race problems can be among the hardest and the most insidious bugs a programmer can face. As Go developers, we must understand aspects such as the data races and race conditions, their possible impacts, and how to avoid them. 
+
+A data race occurs when two or more goroutines simultaneously access the same memory location, and at least one is writing.
+
+```go
+i := 0
+go func() {
+	i++
+}()
+go func() {
+	i++
+}()
+```
+
+Data races occur when multiple goroutines access the same memory location simultaneously, and at least one of them is writing. We have also been how to prevent it with three synchronization approaches:
+- Using atomic operations
+- Protecting a critical section with a mutex
+- Using communication and channels to ensure a variable is updated only by a single goroutine.
+
+```go
+i := 0
+var m sync.Mutex
+var wg sync.WaitGroup
+
+wg.Add(2)
+go func() {
+	defer wg.Done()
+
+	m.Lock()
+	defer m.Unlock()
+	i = 1
+}()
+
+go func() {
+	defer wg.Done()
+
+	m.Lock()
+	defer m.Unlock()
+
+	m++
+}()
+
+wg.Wait()
+fmt.Println(m)
+```
+
+This example doesn't lead to a data race. Yet, it has a race condition. A race condition occurs when the behavior depends on the sequence or the timing of events that can't be controlled. When we work in concurrent applications, it's essential to understand that a data race is different from a race condition. A data race occurs when multiple goroutines simultaneously access the same memory location, and at least one of them is writing. An application can be free of data races but can still have its behavior depending on uncontrolled events
+
+## 27. The Go memory model
+
+The Go memory model is specification that defines the conditions under which a read from a variable in one goroutine can be guaranteed to happen after a write to the same variable in a different goroutine.
+
+## 28. Not understand the concurrency impacts of a workload type
+
+In programming, the execution time of a workload is either limited by:
+
+- The speed of the CPU. For example, running a merge sort algorithm. The workload is called CPU-bound.
+- The speed of I/O. For example, making a REST call or query in DB. The workload is called I/O bound.
+- The amount of available memory. The workload is called memory bound.
+
+Why is it important to classify a workload in the context of a concurrent application? Let's understand it alongside one concurrency pattern: worker pooling.
+
+## 29. Misunderstanding Go contexts
+
+Developers sometimes misunderstood the context.Context type despite being one of the key concepts of the language and being one of the foundations of concurrent code in Go.
+
+**Context value**
+A Context carries a deadline, a cancellation signal, and other values across API boundaries.
+Internally, context.WithTimeout creates a goroutine that will be retained in memory for duration or until cancel is called. Therefore, calling cancel as a defer function means that when we exit the parent function, the context will be canceled, and the goroutine created will be stopped. It's a safeguard to not return in leaving retained object in memory.
+
+**Context signal**
+Another use case for Go contexts is to carry a cancellation signal.
+
+```go
+func main() {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	for i := 0; i < 10; i++ {
+		if i == 5 {
+			cancel()
+		}
+		fn(ctx)
+	}
+}
+
+func fn(ctx context.Context) {
+	select {
+	default:
+		fmt.Println("RUN")
+	case <-ctx.Done():
+		fmt.Println("Done, close file")
+	}
+}
+
+```
+
+
+**Context values**
+
+**Catching a context cancellation**
+
+The context.Context type exports a Done method that returns a receive-only notification channel <- chan struct{}. This channel is closed when the work associated to the context should be canceled. One thing to mention, why should the internal channel be closed when a context is canceled or has met a deadline instead of receiving a specific value? Because the closure of a channel is the only channel action that all the consumer goroutines will receive. This way, all the consumers will be notified once a context is canceled or a deadline is reached.
+
+Furthermore, context.Context exports an Err method that returns nil if the Done channel isn't yet closed; otherwise, it returns a non-nil error explaining why the Done channel was closed. A context.Canceled error if the channel was canceled. A context.DeadlineExceeded error if the context's deadline passed.
+
+```go
+func f(ctx context.Context) error {
+	ch1 <- struct{}{}
+	v := <-ch2
+}
+
+func f(ctx context.Context) error {
+	// send message to ch1 or wait for the context to be canceled
+	select {
+	case <- ctx.Done():
+		return ctx.Err()
+	case ch1 <- struct{}{}:
+	}
+
+	// receive a message from ch2 or wait for the context to be canceled
+	select {
+	case <- ctx.Done():
+		return ctx.Err()
+	case v := <- ch2:
+	}
+}
+```
