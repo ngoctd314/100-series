@@ -1277,3 +1277,19 @@ go func() {
 }()
 ```
 The created goroutine will exit when ch is closed. Yet, do we know exactly when this channel will be closed? 
+
+## 32. Expecting a deterministic behavior using select and channels
+
+Unlike a switch statement where the first case with a match wins, the select statement will select one randomly if multiple options are possible. This behavior might look odd at first, but there's a good reason for that: to prevent possible starvation. Indeed, suppose the first possible communication chosen is based on the source code. In that case, we may fall into the situation where we would solely receive from one single channel because of a fast sender, for example. To prevent this, the language designers have decided to use a random selection.
+
+## 33. Not using notification channels
+
+## 34. Being puzzled about a channel size
+
+## 
+
+Make it correct, make it clear, make it concise, make it fast, in that order.
+
+**CPU architecture**
+
+Modern CPUs rely on caching to speed up memory access. In most cases, via three different caching levels: L1 64 KB, L2 256 KB, and L3, 4MB. Dividing a physical core into multiple logical cores is named in the Intel family as hyper-threading.

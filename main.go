@@ -1,34 +1,26 @@
 package main
 
 import (
-	"context"
-	"time"
+	"fmt"
+	"strconv"
 )
 
-type detachContext struct {
-	ctx context.Context
-}
-
-// Deadline implements context.Context
-func (detachContext) Deadline() (deadline time.Time, ok bool) {
-	return time.Time{}, false
-}
-
-// Done implements context.Context
-func (detachContext) Done() <-chan struct{} {
-	return nil
-}
-
-// Err implements context.Context
-func (detachContext) Err() error {
-	return nil
-}
-
-// Value implements context.Context
-func (d detachContext) Value(key any) any {
-	return d.ctx.Value(key)
-}
-
 func main() {
+	fn()
+}
 
+func fn() {
+	ch := make(chan string)
+
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			for j := 0; j < 10; j++ {
+				ch <- "Goroutine : " + strconv.Itoa(i)
+			}
+		}(i)
+	}
+
+	for k := 1; k <= 100; k++ {
+		fmt.Println(k, <-ch)
+	}
 }
